@@ -2,37 +2,59 @@ defmodule Aoc2021.Day6 do
   @input "day6.txt"
 
   def part1(name \\ @input) do
-    fish = name
-    |> input()
+    fish =
+      name
+      |> input()
 
-    1..80
-    |> Enum.reduce(fish, fn _,fish -> simulate_lanternfish(fish, []) end)
-    |> Enum.count()
+    {pond, count} = simulate(80, fish, %{}, 0)
+    Enum.count(pond) + count
   end
 
   def part2(name \\ @input) do
-    fish = name
-    |> input()
+    fish =
+      name
+      |> input()
 
-    1..256
-    |> Enum.reduce(fish, fn _,fish -> simulate_lanternfish(fish, []) end)
-    |> Enum.count()
+    # Memoize up to depth = 128, as this makes the solution converge faster
+    memo =
+      1..128
+      |> Enum.map(fn depth -> memoize(depth) end)
+      |> Enum.reduce(fn x, accum -> Map.merge(x, accum) end)
+
+    {pond, count} = simulate(256, fish, memo, 0)
+    Enum.count(pond) + count
   end
 
-  def simulate(0, fish), do: fish
-  def simulate(n, fish), do: simulate(n - 1, simulate_lanternfish(fish, []))
-
-  def simulate_lanternfish([], accum), do: accum
-
-  def simulate_lanternfish([0|rest], accum) do
-    simulate_lanternfish(rest, [8 | [6 | accum]])
+  defp memoize(depth) do
+    0..6
+    |> Enum.map(fn fish -> {depth, fish, simulate(depth, [fish], %{}, 0)} end)
+    |> Enum.map(fn {n, fish, {pond, count}} -> {{n, fish}, count + Enum.count(pond)} end)
+    |> Map.new()
   end
 
-  def simulate_lanternfish([fish|rest], accum) do
-    simulate_lanternfish(rest, [fish - 1 | accum])
+  defp simulate(0, fish, _memoization, counts), do: {fish, counts}
+
+  defp simulate(n, fish, memoization, counts) do
+    {accum, count} = simulate_lanternfish(fish, n, [], memoization, 0)
+    simulate(n - 1, accum, memoization, counts + count)
   end
 
-  def input(name \\ @input) do
+  defp simulate_lanternfish([], _n, accum, _memoization, count), do: {accum, count}
+
+  defp simulate_lanternfish([0 | rest], n, accum, memoization, count) do
+    simulate_lanternfish(rest, n, [8 | [6 | accum]], memoization, count)
+  end
+
+  defp simulate_lanternfish([fish | rest], n, accum, memoization, count) do
+    key = {n, fish}
+
+    case memoization do
+      %{^key => result} -> simulate_lanternfish(rest, n, accum, memoization, count + result)
+      _ -> simulate_lanternfish(rest, n, [fish - 1 | accum], memoization, count)
+    end
+  end
+
+  defp input(name) do
     name
     |> Aoc2021.Input.read_raw()
     |> String.trim()

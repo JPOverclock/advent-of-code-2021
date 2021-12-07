@@ -1,85 +1,88 @@
 defmodule Aoc2021.Day3 do
+  @input "day3.txt"
 
-  def part1() do
-    input = input()
+  def part1(input \\ @input) do
+    input = input(input)
     count = Enum.count(input)
 
-    bits = input
-    |> count_bits({0,0,0,0,0,0,0,0,0,0,0,0})
-    |> Tuple.to_list()
-    |> Enum.map(fn bit_count ->
-      case bit_count >= count / 2 do
-        true -> 1
-        false -> 0
-      end
-    end)
+    counts =
+      1..Enum.count(Enum.at(input, 0))
+      |> Enum.map(fn _ -> 0 end)
 
-    gamma = bits |> Enum.join("") |> String.to_integer(2)
-    epsilon = bits |> Enum.map(&reverse_bit/1) |> Enum.join("") |> String.to_integer(2)
+    bits =
+      input
+      |> count_bits(counts)
+      |> Enum.map(fn bit_count ->
+        case bit_count >= count / 2 do
+          true -> 1
+          false -> 0
+        end
+      end)
+
+    gamma = bits_to_integer(bits)
+    epsilon = bits |> Enum.map(&reverse_bit/1) |> bits_to_integer()
 
     gamma * epsilon
   end
 
-  def part2() do
-    input = input()
+  def part2(input \\ @input) do
+    input = input(input)
 
-    oxigen_generator = input |> find_most_significant(0) |> Tuple.to_list() |> Enum.join("") |> String.to_integer(2)
-    carbon_scrubber = input |> find_least_significant(0) |> Tuple.to_list() |> Enum.join("") |> String.to_integer(2)
+    oxigen_generator =
+      input
+      |> filter_bits(0, fn sum, numbers -> sum >= Enum.count(numbers) / 2 end)
+      |> bits_to_integer()
+
+    carbon_scrubber =
+      input
+      |> filter_bits(0, fn sum, numbers -> sum < Enum.count(numbers) / 2 end)
+      |> bits_to_integer()
 
     oxigen_generator * carbon_scrubber
   end
 
-  def find_most_significant([number], _position), do: number
-  def find_most_significant(numbers, position) do
-    sum = numbers
-    |> count_ones_at_position(position)
+  defp filter_bits([number], _position, _filter_function), do: number
 
-    rest = case sum >= (Enum.count(numbers) / 2) do
-      true -> Enum.filter(numbers, fn b -> elem(b, position) == 1 end)
-      false -> Enum.filter(numbers, fn b -> elem(b, position) == 0 end)
-    end
+  defp filter_bits(numbers, position, filter_function) do
+    sum =
+      numbers
+      |> count_ones_at_position(position)
 
-    find_most_significant(rest, position + 1)
+    rest =
+      case filter_function.(sum, numbers) do
+        true -> Enum.filter(numbers, fn b -> Enum.at(b, position) == 1 end)
+        false -> Enum.filter(numbers, fn b -> Enum.at(b, position) == 0 end)
+      end
+
+    filter_bits(rest, position + 1, filter_function)
   end
 
-  def find_least_significant([number], _position), do: number
-  def find_least_significant(numbers, position) do
-    sum = numbers
-    |> count_ones_at_position(position)
-
-    rest = case sum >= (Enum.count(numbers) / 2) do
-      true -> Enum.filter(numbers, fn b -> elem(b, position) == 0 end)
-      false -> Enum.filter(numbers, fn b -> elem(b, position) == 1 end)
-    end
-
-    find_least_significant(rest, position + 1)
-  end
-
-  def count_ones_at_position(bits, position) do
+  defp count_ones_at_position(bits, position) do
     bits
-    |> Enum.map(fn bin -> elem(bin, position) end)
+    |> Enum.map(&Enum.at(&1, position))
     |> Enum.sum()
   end
 
-  def reverse_bit(0), do: 1
-  def reverse_bit(1), do: 0
+  defp reverse_bit(0), do: 1
+  defp reverse_bit(1), do: 0
 
   def count_bits([], bits), do: bits
-  def count_bits([{a,b,c,d,e,f,g,h,i,j,k,l} | rest], {aa,bb,cc,dd,ee,ff,gg,hh,ii,jj,kk,ll}) do
+
+  def count_bits([binary | rest], accumulator) do
     count_bits(
       rest,
-      {aa+a, bb+b, cc+c, dd+d, ee+e, ff+f, gg+g, hh+h, ii+i, jj+j, kk+k, ll+l}
+      Enum.zip_with(binary, accumulator, &(&1 + &2))
     )
   end
 
-  defp input() do
-    "day3.txt"
+  defp bits_to_integer(bits), do: bits |> Enum.join("") |> String.to_integer(2)
+
+  defp input(filename) do
+    filename
     |> Aoc2021.Input.read_as_stream()
     |> Stream.map(&String.trim/1)
-    |> Stream.map(fn str -> String.pad_leading(str, 12, "0") end)
     |> Stream.map(&String.codepoints/1)
     |> Stream.map(fn bin -> Enum.map(bin, fn number -> String.to_integer(number) end) end)
-    |> Stream.map(&List.to_tuple/1)
     |> Enum.to_list()
   end
 end
