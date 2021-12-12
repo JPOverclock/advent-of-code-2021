@@ -1,5 +1,5 @@
 defmodule Aoc2021.Day1Test do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   test "part1" do
     assert Aoc2021.Day1.part1("day1_example.txt") == 7

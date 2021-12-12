@@ -1,5 +1,5 @@
 defmodule Aoc2021.Day4Test do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   test "part1" do
     assert {:ok, {_iterations, _numbers, _board, 4512}} = Aoc2021.Day4.part1("day4_example.txt")
